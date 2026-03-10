@@ -176,6 +176,51 @@ def analyze_branch(vin, vout, threshold):
 
     return vin, gain, results
 
+def analyze_file(filename, vdd):
+    VIN = "v(vin)"
+    VOUT = "v(vout)"
+    GAIN_THRESHOLD = 1
+
+    df = toDataFrames(ngRawRead(file))[0]
+    vin = df[VIN].values
+    vout = df[VOUT].values
+
+    # In simulation: VIN VIN VSS pwl 0 0 50u {VDDA} 100u 0
+    # So Vin ramps up and then back down. Must be split in two parts so it does not mess with the derivative
+    # Split sweep at maximum Vin into two branches: up and down
+    peak = np.argmax(vin)
+
+    vin_up = vin[:peak]
+    vout_up = vout[:peak]
+
+    vin_down = vin[peak:]
+    vout_down = vout[peak:]
+
+
+    vin_up, gain_up, res_up = analyze_branch(vin_up, vout_up, GAIN_THRESHOLD)
+    vin_down, gain_down, res_down = analyze_branch(vin_down, vout_down, GAIN_THRESHOLD)
+
+    # Plot gain curve
+    plt.figure()
+
+    plt.plot(vin_up, gain_up, label="Forward sweep")
+    plt.plot(vin_down, gain_down, label="Reverse sweep")
+
+    plt.axhline(1, linestyle="--")
+    plt.axhline(-1, linestyle="--")
+
+    plt.xlabel("Vin [V]")
+    plt.ylabel("Gain dVout/dVin")
+    plt.title("Voltage Gain vs Vin")
+
+    plt.grid(True)
+    plt.legend()
+
+    plt.savefig(f"iga/gain_curve_VDD{vdd}.png", dpi=300)
+    plt.close()
+
+    return res_up, res_down
+
 
 def main():
 
@@ -187,55 +232,21 @@ def main():
     raw_files = sorted(glob.glob("*.raw"))
     results = []
     for file in raw_files:
-        vdd = int(re.findall(r"[0-9]*", file)[0]) # Extract VDD from filename
+        match = re.findall(r"[0-9]*", file) # Extract VDD from filename
+        if match is not None:
+            vdd = int(match[0])
+            res_up, res_down = analyze_file(file, vdd)
 
-        df = toDataFrames(ngRawRead(file))[0]
+            res_up["branch"] = "forward"
+            res_down["branch"] = "reverse"
 
-        vin = df[VIN].values
-        vout = df[VOUT].values
+            res_up["vdd"] = vdd
+            res_down["vdd"] = vdd
 
-        # In simulation: VIN VIN VSS pwl 0 0 50u {VDDA} 100u 0
-        # So Vin ramps up and then back down. Must be split in two parts so it does not mess with the derivative
-        # Split sweep at maximum Vin into two branches: up and down
-        peak = np.argmax(vin)
+            results.append(res_up)
+            results.append(res_down)
 
-        vin_up = vin[:peak]
-        vout_up = vout[:peak]
-
-        vin_down = vin[peak:]
-        vout_down = vout[peak:]
-
-
-        vin_up, gain_up, res_up = analyze_branch(vin_up, vout_up, GAIN_THRESHOLD)
-        vin_down, gain_down, res_down = analyze_branch(vin_down, vout_down, GAIN_THRESHOLD)
-
-        res_up["branch"] = "forward"
-        res_down["branch"] = "reverse"
-
-        res_up["vdd"] = vdd
-        res_down["vdd"] = vdd
-
-        results.append(res_up)
-        results.append(res_down)
-
-        # Plot gain curve
-        plt.figure()
-
-        plt.plot(vin_up, gain_up, label="Forward sweep")
-        plt.plot(vin_down, gain_down, label="Reverse sweep")
-
-        plt.axhline(1, linestyle="--")
-        plt.axhline(-1, linestyle="--")
-
-        plt.xlabel("Vin [V]")
-        plt.ylabel("Gain dVout/dVin")
-        plt.title("Voltage Gain vs Vin")
-
-        plt.grid(True)
-        plt.legend()
-
-        plt.savefig(f"iga/gain_curve_VDD{vdd}.png", dpi=300)
-        plt.close()
+        
         
     table = pd.DataFrame(results)
     table = table.sort_values(["vdd", "branch"])
