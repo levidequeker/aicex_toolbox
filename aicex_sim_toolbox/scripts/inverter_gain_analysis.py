@@ -2,6 +2,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import re
+from pathlib import Path
 
 from rawread import ngRawRead, toDataFrames
 
@@ -104,6 +106,7 @@ def main():
 
     GAIN_THRESHOLD = 1
 
+    vdd_str = re.findall(r"VDD[0-9]*", RAW_FILE)[0] # Extract VDD from filename
 
     df = toDataFrames(ngRawRead(RAW_FILE))[0]
 
@@ -155,7 +158,7 @@ def main():
     plt.grid(True)
     plt.legend()
 
-    plt.savefig("gain_curve.png", dpi=300)
+    plt.savefig(f"iga/gain_curve_{vdd_str}.png", dpi=300)
     plt.close()
 
 
