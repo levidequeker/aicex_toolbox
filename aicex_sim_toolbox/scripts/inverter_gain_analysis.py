@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 from pathlib import Path
+import glob
 
 BSIZE_SP = 512 # Max size of a line of data; we don't want to read the
                # whole file to find a line, in case file does not have
@@ -178,67 +179,87 @@ def analyze_branch(vin, vout, threshold):
 
 def main():
 
-    RAW_FILE = "tran_SchGtKttTtVt_LVT_VDD100.raw"
 
     VIN = "v(vin)"
     VOUT = "v(vout)"
-
     GAIN_THRESHOLD = 1
 
-    vdd_str = re.findall(r"VDD[0-9]*", RAW_FILE)[0] # Extract VDD from filename
+    raw_files = sorted(glob.glob("*.raw"))
+    results = []
+    for file in raw_files:
+        vdd = int(re.findall(r"[0-9]*", file)[0]) # Extract VDD from filename
 
-    df = toDataFrames(ngRawRead(RAW_FILE))[0]
+        df = toDataFrames(ngRawRead(file))[0]
 
-    vin = df[VIN].values
-    vout = df[VOUT].values
+        vin = df[VIN].values
+        vout = df[VOUT].values
 
-    # In simulation: VIN VIN VSS pwl 0 0 50u {VDDA} 100u 0
-    # So Vin ramps up and then back down. Must be split in two parts so it does not mess with the derivative
-    # Split sweep at maximum Vin into two branches: up and down
-    peak = np.argmax(vin)
+        # In simulation: VIN VIN VSS pwl 0 0 50u {VDDA} 100u 0
+        # So Vin ramps up and then back down. Must be split in two parts so it does not mess with the derivative
+        # Split sweep at maximum Vin into two branches: up and down
+        peak = np.argmax(vin)
 
-    vin_up = vin[:peak]
-    vout_up = vout[:peak]
+        vin_up = vin[:peak]
+        vout_up = vout[:peak]
 
-    vin_down = vin[peak:]
-    vout_down = vout[peak:]
-
-
-    vin_up, gain_up, res_up = analyze_branch(vin_up, vout_up, GAIN_THRESHOLD)
-    vin_down, gain_down, res_down = analyze_branch(vin_down, vout_down, GAIN_THRESHOLD)
-
-
-    table = pd.DataFrame([
-
-        {"branch":"forward", **res_up},
-        {"branch":"reverse", **res_down}
-
-    ])
-
-    table.to_csv("gain_metrics.csv", index=False)
-
-    print("\nGain Metrics\n")
-    print(table.to_string(index=False))
+        vin_down = vin[peak:]
+        vout_down = vout[peak:]
 
 
-    # Plot gain curve
-    plt.figure()
+        vin_up, gain_up, res_up = analyze_branch(vin_up, vout_up, GAIN_THRESHOLD)
+        vin_down, gain_down, res_down = analyze_branch(vin_down, vout_down, GAIN_THRESHOLD)
 
-    plt.plot(vin_up, gain_up, label="Forward sweep")
-    plt.plot(vin_down, gain_down, label="Reverse sweep")
+        res_up["branch"] = "forward"
+        res_down["branch"] = "reverse"
 
-    plt.axhline(1, linestyle="--")
-    plt.axhline(-1, linestyle="--")
+        res_up["vdd"] = vdd
+        res_down["vdd"] = vdd
 
-    plt.xlabel("Vin [V]")
-    plt.ylabel("Gain dVout/dVin")
-    plt.title("Voltage Gain vs Vin")
+        results.append(res_up)
+        results.append(res_down)
 
-    plt.grid(True)
-    plt.legend()
+        # Plot gain curve
+        plt.figure()
 
-    plt.savefig(f"iga/gain_curve_{vdd_str}.png", dpi=300)
-    plt.close()
+        plt.plot(vin_up, gain_up, label="Forward sweep")
+        plt.plot(vin_down, gain_down, label="Reverse sweep")
+
+        plt.axhline(1, linestyle="--")
+        plt.axhline(-1, linestyle="--")
+
+        plt.xlabel("Vin [V]")
+        plt.ylabel("Gain dVout/dVin")
+        plt.title("Voltage Gain vs Vin")
+
+        plt.grid(True)
+        plt.legend()
+
+        plt.savefig(f"iga/gain_curve_VDD{vdd}.png", dpi=300)
+        plt.close()
+        
+    table = pd.DataFrame(results)
+    table = table.sort_values(["vdd", "branch"])
+    table.to_csv("gain_overview.csv", index=False)
+
+    with open("gain_overview.txt", "w") as f:
+
+        f.write("GAIN ANALYSIS OVERVIEW\n")
+        f.write("=====================\n\n")
+
+        for vdd in sorted(table["vdd"].unique()):
+
+            f.write(f"VDD = {vdd:.3f} V\n")
+
+            sub = table[table["vdd"] == vdd]
+
+            f.write(sub.to_string(index=False))
+            f.write("\n\n")
+
+
+    print("\nFull overview:\n")
+    print(table)
+
+    
 
 
 if __name__ == "__main__":
