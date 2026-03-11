@@ -177,21 +177,26 @@ def analyze_branch(vin, vout, threshold):
     return vin, gain, results
 
 def analyze_file(filename, vdd):
-    VIN = "v(vin)"
-    VOUT = "v(vout)"
     GAIN_THRESHOLD = 1
 
-    df = toDataFrames(ngRawRead(file))[0]
-    vin = df[VIN].values
-    vout = df[VOUT].values
+    df = toDataFrames(ngRawRead(filename))[0]
+    vin = df["v(vin)"].values
+    vout = df["v(vout)"].values
+    time = df["time"].values
+
+    # In simulation, VDD starts at 0, because I let all nodes initialize at 0 V
+    # I let VDD sweep up in the first 10 ns, leading to a non-realistic transient. 
+    # Must remove this transient so it does not spoil the gain measurement
+    timestep = time[1] - time[0]
+    transient_steps = 100e-9 // timestep # Remove the first 100 ns
 
     # In simulation: VIN VIN VSS pwl 0 0 50u {VDDA} 100u 0
     # So Vin ramps up and then back down. Must be split in two parts so it does not mess with the derivative
     # Split sweep at maximum Vin into two branches: up and down
     peak = np.argmax(vin)
-
-    vin_up = vin[:peak]
-    vout_up = vout[:peak]
+ 
+    vin_up = vin[transient_steps:peak]
+    vout_up = vout[transient_steps:peak]
 
     vin_down = vin[peak:]
     vout_down = vout[peak:]
@@ -232,7 +237,7 @@ def main():
     raw_files = sorted(glob.glob("*.raw"))
     results = []
     for file in raw_files:
-        match = re.findall(r"[0-9]*", file) # Extract VDD from filename
+        match = re.findall(r"[0-9]+", file) # Extract VDD from filename
         if match is not None:
             vdd = int(match[0])
             res_up, res_down = analyze_file(file, vdd)
@@ -246,7 +251,9 @@ def main():
             results.append(res_up)
             results.append(res_down)
 
-        
+    if len(results) == 0:
+        print("No file found that corresponds to the naming convention tran_<type of test>_<technology>_VDD<number>.raw")
+        return 0
         
     table = pd.DataFrame(results)
     table = table.sort_values(["vdd", "branch"])
