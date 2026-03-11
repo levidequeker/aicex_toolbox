@@ -148,7 +148,7 @@ def analyze_branch(vin, vout, threshold):
 
     vin, vout, gain = compute_gain(vin, vout)
 
-    max_gain = np.max(np.abs(gain))
+    max_gain = abs(np.min(gain)) # Min because we know that it is an inverter. np.max would give the gain of the transient
 
     vin_min, vin_max, width = largest_continuous_region(vin, gain, threshold)
 
@@ -186,18 +186,15 @@ def analyze_file(filename, vdd):
 
     # In simulation, VDD starts at 0, because I let all nodes initialize at 0 V
     # I let VDD sweep up in the first 10 ns, leading to a non-realistic transient. 
-    # Must remove this transient so it does not spoil the gain measurement
-    timestep = time[1] - time[0]
-    transient_steps = 100e-9 // timestep # Remove the first 100 ns
+    # Remove first 200 ns to remove this transient
+    tran_idx = np.argmin(np.abs(time - 200e-9))
 
     # In simulation: VIN VIN VSS pwl 0 0 50u {VDDA} 100u 0
     # So Vin ramps up and then back down. Must be split in two parts so it does not mess with the derivative
     # Split sweep at maximum Vin into two branches: up and down
     peak = np.argmax(vin)
- 
-    vin_up = vin[transient_steps:peak]
-    vout_up = vout[transient_steps:peak]
-
+    vin_up = vin[tran_idx:peak]
+    vout_up = vout[tran_idx:peak]
     vin_down = vin[peak:]
     vout_down = vout[peak:]
 
@@ -238,8 +235,8 @@ def main():
     results = []
     for file in raw_files:
         match = re.findall(r"[0-9]+", file) # Extract VDD from filename
-        if match is not None:
-            vdd = int(match)
+        if len(match) > 0:
+            vdd = int(match[0])
             res_up, res_down = analyze_file(file, vdd)
 
             res_up["branch"] = "forward"
