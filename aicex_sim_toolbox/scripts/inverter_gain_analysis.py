@@ -239,7 +239,7 @@ def main():
     for file in raw_files:
         match = re.findall(r"[0-9]+", file) # Extract VDD from filename
         if match is not None:
-            vdd = int(match[0])
+            vdd = int(match)
             res_up, res_down = analyze_file(file, vdd)
 
             res_up["branch"] = "forward"
