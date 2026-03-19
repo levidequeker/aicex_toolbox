@@ -190,17 +190,56 @@ def main():
     print(table)
 
     # --- Plot gm vs VDD ---
-    fig, (ax1) = plt.subplots(1, 1, figsize=(8, 6), sharex=True)
-
-    # gm vs VDD
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 1, figsize=(8, 6), sharex=True)
+    marker_dict = {
+    "LVT schmitt trigger": "o",
+    "LVT CMOS": "s",
+    "NVT with n-type feedback": "^",
+    "NVT schmitt trigger": "D",
+    "LVT with p-type feedback": "x"
+    }
+    
+    # gm vs VDD of all designs
     for col in table.columns:
         if col != "vdd":
-            ax1.plot(table["vdd"], table[col]*1e6, marker="o", label=col)
+            marker = marker_dict.get(col, "o")
+            ax1.plot(table["vdd"], table[col]*1e6, marker=marker, label=col)
     ax1.set_ylabel(r"$g_m$ [$\mu S$]")
     ax1.set_xlabel(r"$V_{dd}$ [mV]")
-    ax1.set_title(r"$g_m$ vs $V_{dd}$ (NVT schmitt trigger)")
+    ax1.set_title(r"$g_m$ vs $V_{dd}$")
     ax1.grid(True)
     ax1.legend()
+
+    # gm vs VDD for LVT
+    for col in table.columns:
+        if col != "vdd" and not col.find("NVT"):
+            marker = marker_dict.get(col, "o")
+            ax2.plot(table["vdd"], table[col]*1e6, marker=marker, label=col)
+    ax2.set_ylabel(r"$g_m$ [$\mu S$]")
+    ax2.set_xlabel(r"$V_{dd}$ [mV]")
+    ax2.grid(True)
+    ax2.legend()
+
+    # gm vs VDD for NVT
+    mask = table["vdd"] < 160
+    for col in table.columns:
+        if col != "vdd" and not col.find("LVT"):
+            marker = marker_dict.get(col, "o")
+            ax3.plot(table["vdd"][mask], table[col][mask]*1e6, marker=marker, label=col)
+    ax3.set_ylabel(r"$g_m$ [$\mu S$]")
+    ax3.set_xlabel(r"$V_{dd}$ [mV]")
+    ax3.grid(True)
+    ax3.legend()
+
+    # gm vs VDD for VDD < 150 mV
+    for col in table.columns:
+        if col != "vdd" and not col.find("LVT"):
+            marker = marker_dict.get(col, "o")
+            ax4.plot(table["vdd"][mask], table[col][mask]*1e6, marker=marker, label=col)
+    ax4.set_ylabel(r"$g_m$ [$\mu S$]")
+    ax4.set_xlabel(r"$V_{dd}$ [mV]")
+    ax4.grid(True)
+    ax4.legend()
 
     plt.tight_layout()
     plt.savefig("media/gm_Av_vs_VDD.png", dpi=300)
