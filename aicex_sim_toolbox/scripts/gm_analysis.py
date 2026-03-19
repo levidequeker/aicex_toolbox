@@ -94,16 +94,28 @@ def analyze_file(filename, vdd):
     tran_idx = np.argmin(np.abs(time_tran - 400e-9))
     time = time_tran[tran_idx:]
     vin = df["v(vin)"].values[tran_idx:]
-    iout = df["i(v.xdut.v1)"].values[tran_idx:]
+    iout1 = df["i(v.xdut.v1)"].values[tran_idx:]
+    iout2 = df["i(v.xdut.v2)"].values[tran_idx:]
+    iout3 = df["i(v.xdut.v3)"].values[tran_idx:]
+    iout4 = df["i(v.xdut.v4)"].values[tran_idx:]
+    iout5 = df["i(v.xdut.v5)"].values[tran_idx:]
 
     dvin = np.gradient(vin)
-    diout = np.gradient(iout)
+    diout1 = np.gradient(iout1)
+    diout2 = np.gradient(iout2)
+    diout3 = np.gradient(iout3)
+    diout4 = np.gradient(iout4)
+    diout5 = np.gradient(iout5)
 
     epsilon = 5e-6
     valid = np.abs(dvin) > epsilon
     
 
-    gm = diout[valid] / dvin[valid]
+    gm1 = diout1[valid] / dvin[valid]
+    gm2 = diout2[valid] / dvin[valid]
+    gm3 = diout3[valid] / dvin[valid]
+    gm4 = diout4[valid] / dvin[valid]
+    gm5 = diout5[valid] / dvin[valid]
     time_valid = time[valid]
 
     """fig, (ax1,ax2, ax3) = plt.subplots(3, 1, figsize=(8,4), sharex=True)
@@ -129,7 +141,15 @@ def analyze_file(filename, vdd):
     plt.savefig(f"media/gm_VDD{vdd}.png", dpi=300)
     plt.close()"""
 
-    return np.abs(np.mean(gm))
+    gm = {
+        "LVT schmitt trigger": np.abs(np.mean(gm1)),
+        "LVT CMOS": np.abs(np.mean(gm2)),
+        "NVT with n-type feedback": np.abs(np.mean(gm3)),
+        "NVT schmitt trigger": np.abs(np.mean(gm4)),
+        "LVT with p-type feedback": np.abs(np.mean(gm5))
+    }
+
+    return gm
 
 
 def main():
@@ -141,12 +161,11 @@ def main():
             vdd = int(match[0])
             print(f"Analyzing {file}")
             gm = analyze_file(file, vdd)
-            results.append(
-                {
-                    "vdd": vdd,
-                    "gm": gm,
-                }
-            )
+            
+            results.append({
+                "vdd": vdd,
+                **gm
+                })
 
     table = pd.DataFrame(results)
     table = table.sort_values(["vdd"])
@@ -174,11 +193,14 @@ def main():
     fig, (ax1) = plt.subplots(1, 1, figsize=(8, 6), sharex=True)
 
     # gm vs VDD
-    ax1.plot(table["vdd"], table["gm"]*1e6, marker="o")
+    for col in table.columns:
+        if col != "vdd":
+            ax1.plot(table["vdd"], table[col]*1e6, marker="o", label=col)
     ax1.set_ylabel(r"$g_m$ [$\mu S$]")
     ax1.set_xlabel(r"$V_{dd}$ [mV]")
     ax1.set_title(r"$g_m$ vs $V_{dd}$ (NVT schmitt trigger)")
     ax1.grid(True)
+    ax1.legend()
 
     plt.tight_layout()
     plt.savefig("media/gm_Av_vs_VDD.png", dpi=300)
