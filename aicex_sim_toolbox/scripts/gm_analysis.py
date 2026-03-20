@@ -118,21 +118,22 @@ def analyze_file(filename, vdd):
     gm5 = diout5[valid] / dvin[valid]
     time_valid = time[valid]
 
-    """fig, (ax1,ax2, ax3) = plt.subplots(3, 1, figsize=(8,4), sharex=True)
+    """fig, (ax1,ax2,ax3) = plt.subplots(3, 1, figsize=(8,4), sharex=True)
     
-    ax1.plot(time_valid, gm)
+    ax1.plot(time_valid, gm3)
     ax1.set_ylabel("Gm [A/V]")
-    ax1.set_title(f"Voltage gain & gm vs time (VDD={vdd})")
+    ax1.set_title(f"Gm vs time for the NVT with n-type feedback (VDD={vdd})")
     ax1.grid(True)
     
-    ax2.plot(time_valid, Av)
-    ax2.set_ylabel("Av [-]")
+
+    ax2.plot(time_valid, vin[valid], label="Vin")
+    ax2.set_ylabel("Voltage [V]")
     ax2.set_xlabel("time [s]")
+    ax2.legend()
     ax2.grid(True)
 
-    ax3.plot(time_valid, vin[valid], label="Vin")
-    ax3.plot(time_valid, vout[valid], label="Vout")
-    ax3.set_ylabel("Voltage [V]")
+    ax3.plot(time_valid, iout3[valid]*1e6, label="Iout")
+    ax3.set_ylabel("Current [uA]")
     ax3.set_xlabel("time [s]")
     ax3.legend()
     ax3.grid(True)
@@ -190,10 +191,11 @@ def main():
     print(table)
 
     # --- Plot gm vs VDD ---
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 1, figsize=(8, 6), sharex=True)
+    fig, axes = plt.subplots(2, 2, figsize=(8, 6))
+    ax1, ax2, ax3, ax4 = axes.flatten()
     marker_dict = {
     "LVT schmitt trigger": "o",
-    "LVT CMOS": "s",
+    "LVT CMOS": "+",
     "NVT with n-type feedback": "^",
     "NVT schmitt trigger": "D",
     "LVT with p-type feedback": "x"
@@ -203,7 +205,7 @@ def main():
     for col in table.columns:
         if col != "vdd":
             marker = marker_dict.get(col, "o")
-            ax1.plot(table["vdd"], table[col]*1e6, marker=marker, label=col)
+            ax1.plot(table["vdd"], table[col]*1e6, marker=marker, markersize=3, label=col)
     ax1.set_ylabel(r"$g_m$ [$\mu S$]")
     ax1.set_xlabel(r"$V_{dd}$ [mV]")
     ax1.set_title(r"$g_m$ vs $V_{dd}$")
@@ -212,32 +214,35 @@ def main():
 
     # gm vs VDD for LVT
     for col in table.columns:
-        if col != "vdd" and not col.find("NVT"):
+        if col != "vdd" and col.find("NVT") == -1:
             marker = marker_dict.get(col, "o")
-            ax2.plot(table["vdd"], table[col]*1e6, marker=marker, label=col)
+            ax2.plot(table["vdd"], table[col]*1e6, marker=marker, markersize=3, label=col)
     ax2.set_ylabel(r"$g_m$ [$\mu S$]")
     ax2.set_xlabel(r"$V_{dd}$ [mV]")
+    ax2.set_title(r"$g_m$ vs $V_{dd}$ for LVT designs")
     ax2.grid(True)
     ax2.legend()
 
     # gm vs VDD for NVT
-    mask = table["vdd"] < 160
+    mask = table["vdd"] < 110
     for col in table.columns:
-        if col != "vdd" and not col.find("LVT"):
+        if col != "vdd" and col.find("LVT") == -1:
             marker = marker_dict.get(col, "o")
-            ax3.plot(table["vdd"][mask], table[col][mask]*1e6, marker=marker, label=col)
+            ax3.plot(table["vdd"][mask], table[col][mask]*1e6, marker=marker, markersize=3, label=col)
     ax3.set_ylabel(r"$g_m$ [$\mu S$]")
     ax3.set_xlabel(r"$V_{dd}$ [mV]")
+    ax3.set_title(r"$g_m$ vs $V_{dd}$ for NVT designs")
     ax3.grid(True)
     ax3.legend()
 
     # gm vs VDD for VDD < 150 mV
     for col in table.columns:
-        if col != "vdd" and not col.find("LVT"):
+        if col != "vdd" and col.find("LVT") == 0:
             marker = marker_dict.get(col, "o")
-            ax4.plot(table["vdd"][mask], table[col][mask]*1e6, marker=marker, label=col)
+            ax4.plot(table["vdd"][mask], table[col][mask]*1e6, marker=marker, markersize=3, label=col)
     ax4.set_ylabel(r"$g_m$ [$\mu S$]")
     ax4.set_xlabel(r"$V_{dd}$ [mV]")
+    ax4.set_title(r"$g_m$ vs $V_{dd}$ for LVT designs")
     ax4.grid(True)
     ax4.legend()
 
