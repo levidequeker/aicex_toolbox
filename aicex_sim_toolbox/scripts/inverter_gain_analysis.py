@@ -98,15 +98,6 @@ def compute_gain(vin, vout):
 
     return vin, vout, gain
 
-def compute_gm(vin, iout):
-    order = np.argsort(vin)
-    vin = vin[order]
-    iout = iout[order]
-    
-    gm = np.gradient(iout,vin)
-
-    return vin, iout, gm
-
 
 def largest_continuous_region(vin, gain, threshold):
 
@@ -153,16 +144,9 @@ def largest_continuous_region(vin, gain, threshold):
     return vin_min, vin_max, vin_max - vin_min
 
 
-def analyze_branch(vin, vout, iout, threshold, calc_gm):
+def analyze_branch(vin, vout, threshold):
 
     vin, vout, gain = compute_gain(vin, vout)
-
-    if calc_gm:
-        vin, vout, gm = compute_gm(vin, iout)
-        max_gm = abs(np.min(gm))
-    else:
-        gm = None
-        max_gm = None
 
     max_gain = abs(np.min(gain)) # Min because we know that it is an inverter. np.max would give the gain of the transient
 
@@ -183,7 +167,6 @@ def analyze_branch(vin, vout, iout, threshold, calc_gm):
 
     results = {
         "max_gain": max_gain,
-        "max_gm": max_gm,
         "vin_min_gain_window": vin_min,
         "vin_max_gain_window": vin_max,
         "vin_gain_window": width,
@@ -191,19 +174,15 @@ def analyze_branch(vin, vout, iout, threshold, calc_gm):
         "small_signal_gain_at_bias": small_signal_gain
     }
 
-    return vin, gain, gm, results
+    return vin, gain, results
 
-def analyze_file(filename, vdd, calc_gm):
+def analyze_file(filename, vdd):
     GAIN_THRESHOLD = 1
 
     df = toDataFrames(ngRawRead(filename))[0]
     vin = df["v(vin)"].values
     vout = df["v(vout)"].values
     time = df["time"].values
-    if calc_gm:
-        iout = df["i(vout)"].values
-    else:
-        iout = None
 
     # In simulation, VDD starts at 0, because I let all nodes initialize at 0 V
     # I let VDD sweep up in the first 10 ns, leading to a non-realistic transient. 
@@ -218,21 +197,11 @@ def analyze_file(filename, vdd, calc_gm):
     vout_up = vout[tran_idx:peak]
     vin_down = vin[peak:]
     vout_down = vout[peak:]
-    if calc_gm:
-        iout_up = iout[tran_idx:peak]
-        iout_down = iout[peak:]
-    else:
-        iout_up = None
-        iout_down = None
 
-    vin_up, gain_up, gm_up, res_up = analyze_branch(vin_up, vout_up, iout_up, GAIN_THRESHOLD, calc_gm)
-    vin_down, gain_down, gm_down, res_down = analyze_branch(vin_down, vout_down, iout_down, GAIN_THRESHOLD, calc_gm)
+    vin_up, gain_up, res_up = analyze_branch(vin_up, vout_up, GAIN_THRESHOLD)
+    vin_down, gain_down, res_down = analyze_branch(vin_down, vout_down, GAIN_THRESHOLD)
 
-    if calc_gm:
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
-    else:
-        fig, ax1 = plt.subplots(1, 1, figsize=(8, 4))
-        ax2 = None
+    fig, ax1 = plt.subplots(1, 1, figsize=(8, 4))
 
     # --- Subplot 1: Gain ---
     ax1.plot(vin_up, gain_up, label="Forward sweep")
@@ -240,26 +209,14 @@ def analyze_file(filename, vdd, calc_gm):
 
     ax1.axhline(1, linestyle="--")
     ax1.axhline(-1, linestyle="--")
-
+    ax1.set_xlabel("Vin [V]")
     ax1.set_ylabel("Gain dVout/dVin")
     ax1.set_title(f"Voltage Gain & gm vs Vin (VDD={vdd})")
     ax1.grid(True)
     ax1.legend()
 
-    # --- Subplot 2: gm ---
-    if calc_gm:
-        ax2.plot(vin_up, gm_up, label="Forward sweep")
-        ax2.plot(vin_down, gm_down, label="Reverse sweep")
-
-        ax2.set_ylabel("gm [S]")
-        ax2.set_xlabel("Vin [V]")
-        ax2.grid(True)
-        ax2.legend()
-    else:
-        ax1.set_xlabel("Vin [V]")
-
     plt.tight_layout()
-    plt.savefig(f"iga/gain_gm_VDD{vdd}.png", dpi=300)
+    plt.savefig(f"iga/gain_VDD{vdd}.png", dpi=300)
     plt.close()
 
 
@@ -267,14 +224,13 @@ def analyze_file(filename, vdd, calc_gm):
 
 
 def main():
-    calc_gm = True
     raw_files = sorted(glob.glob("*.raw"))
     results = []
     for file in raw_files:
         match = re.findall(r"[0-9]+", file) # Extract VDD from filename
         if len(match) > 0:
             vdd = int(match[0])
-            res_up, res_down = analyze_file(file, vdd, calc_gm)
+            res_up, res_down = analyze_file(file, vdd)
 
             res_up["branch"] = "forward"
             res_down["branch"] = "reverse"
