@@ -80,9 +80,10 @@ def generate_mc_plots(df_mc, stats, gm_cols, result_path, plot=False):
 
         # Plot B: Distributie per VDD (Histogram)
         plt.figure(figsize=(10, 6))
-        sns.histplot(data=df_mc, x=col, hue="vdd", kde=True, palette="viridis")
-        plt.title(f"Distribution of {col_title} across VDD steps")
-        plt.savefig(result_path / f"mc_distro_{col}.png")
+        for vdd in stats["vdd"]:
+            sns.histplot(data=df_mc[df_mc["vdd"] == vdd], x=col, hue="vdd", kde=True, palette="viridis")
+        plt.title(f"Distribution of {col_title} for VDD = {vdd} mV")
+        plt.savefig(result_path / f"mc_distro_{col}_{vdd}mv.png")
         if plot:
             plt.show()
 
