@@ -40,6 +40,8 @@ def process_gm_row(filename, force):
 def generate_mc_plots(df_mc, stats, gm_cols, result_path, plot=False):
     """Genereert de 'wolk' plot en histogrammen."""
     for col in gm_cols:
+        print(f"Provide the title for the following plot:")
+        col_title = input()
         plt.figure(figsize=(10, 6))
         
         # Plot A: De 'Wolk' (Mean + Shading)
@@ -52,7 +54,7 @@ def generate_mc_plots(df_mc, stats, gm_cols, result_path, plot=False):
         plt.fill_between(x, mu - 3*sigma, mu + 3*sigma, color='blue', alpha=0.2, label='3-sigma range')
         plt.scatter(df_mc["vdd"], df_mc[col], color='black', s=5, alpha=0.3, label='Raw MC data')
 
-        plt.title(f"Monte Carlo Analysis: {col}")
+        plt.title(f"Monte Carlo Analysis: {col_title}")
         plt.xlabel("VDD [mV]")
         plt.ylabel("gm [S]")
         plt.grid(True, which='both', linestyle='--', alpha=0.5)
@@ -66,7 +68,7 @@ def generate_mc_plots(df_mc, stats, gm_cols, result_path, plot=False):
         # Plot B: Distributie per VDD (Histogram)
         plt.figure(figsize=(10, 6))
         sns.histplot(data=df_mc, x=col, hue="vdd", kde=True, palette="viridis")
-        plt.title(f"Distribution of {col} across VDD steps")
+        plt.title(f"Distribution of {col_title} across VDD steps")
         plt.savefig(result_path / f"mc_distro_{col}.png")
         plt.show()
 
