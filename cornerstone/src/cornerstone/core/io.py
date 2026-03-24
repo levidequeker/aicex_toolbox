@@ -90,13 +90,13 @@ def toDataFrames(ngarr):
 
 def makeResultDirectory(path: str, sim: str, subsim=None):
     """Checks if the required result directory structure is present. If not, the required folders are made."""
-    result_root = os.path.join(Path(path), RESULT_DIR)
+    result_root = Path(os.path.join(Path(path), RESULT_DIR))
     # Check if root result directory exists
     if not os.path.isdir(result_root):
         os.mkdir(result_root)
 
     # Check if simulation directory exists within results directory
-    sim_dir = os.path.join(result_root, sim)
+    sim_dir = Path(os.path.join(result_root, sim))
     destination = sim_dir
     if not os.path.isdir(sim_dir):
         os.mkdir(sim_dir)
@@ -105,7 +105,7 @@ def makeResultDirectory(path: str, sim: str, subsim=None):
     # Optional: user can make subdirectory within sim directory. Useful when sorting on different parameters
     # Check if subsimulation directory exists within simulation directory
     if subsim is not None:
-        subsim_dir = os.path.join(sim_dir, subsim)
+        subsim_dir = Path(os.path.join(sim_dir, subsim))
         destination = subsim_dir
         if not os.path.isdir(sim_dir):
             os.mkdir(sim_dir)
