@@ -12,7 +12,7 @@ def make_dataframe(path, storage_file):
 
     # Try loading an existing df out of the storage file (.csv) and adding previously processed filenames to a set
     processed_files = set()
-    if os.path.isfile(os.path.join(Path(dir), storage_file)):
+    if os.path.isfile(os.path.join(Path(path), storage_file)):
         print("Loading existing dataframe...")
         try:
             df = pd.read_csv(storage_file)
@@ -23,8 +23,8 @@ def make_dataframe(path, storage_file):
     else:
         df = None
 
-    # Iterate over files in dir and parse them (if not already in df)
-    for f in Path(dir).glob("*.raw"):
+    # Iterate over files in path and parse them (if not already in df)
+    for f in Path(path).glob("*.raw"):
         if str(f) in processed_files: continue
 
         meta = parse_filename(f.name)

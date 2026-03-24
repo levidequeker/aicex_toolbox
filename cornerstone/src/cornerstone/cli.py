@@ -17,11 +17,11 @@ def main():
     
     # gm etc
     etc_parser = gm_sub.add_parser("etc", help="Extreme corner analysis")
-    etc_parser.add_argument("--dir", default=".", help="Directory with .raw files")
+    etc_parser.add_argument("--path", default=".", help="Directory with .raw files")
     
     # gm mc
     mc_parser = gm_sub.add_parser("mc", help="Monte Carlo statistical analysis")
-    mc_parser.add_argument("--dir", default=".", help="Directory with .raw files")
+    mc_parser.add_argument("--path", default=".", help="Directory with .raw files")
 
     # 3. GAIN Command (Repeat the logic)
     gain_parser = subparsers.add_parser("gain", help="Gain/VTC analysis")
@@ -31,22 +31,22 @@ def main():
     args = parser.parse_args()
 
     # Create or update dataframe
-    df = make_dataframe(args.dir, DB_FILE)
+    df = make_dataframe(args.path, DB_FILE)
 
     # Routing logic
     if args.command == "gm":
         if args.mode == "etc":
-            gm_analysis.run_etc(args.dir, df)
-            df.to_csv(Path(args.dir) / DB_FILE, index=False)
+            gm_analysis.run_etc(args.path, df)
+            df.to_csv(Path(args.path) / DB_FILE, index=False)
         elif args.mode == "mc":
-            gm_analysis.run_mc(args.dir, df)
-            df.to_csv(Path(args.dir) / DB_FILE, index=False)
+            gm_analysis.run_mc(args.path, df)
+            df.to_csv(Path(args.path) / DB_FILE, index=False)
         else:
             gm_parser.print_help()
 
     elif args.command == "gain":
-        gain_analysis.main(args.dir)
-        df.to_csv(Path(args.dir) / DB_FILE, index=False)
+        gain_analysis.main(args.path)
+        df.to_csv(Path(args.path) / DB_FILE, index=False)
     else:
         parser.print_help()
 

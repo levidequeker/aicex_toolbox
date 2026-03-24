@@ -37,7 +37,7 @@ def process_gm_row(filename, force):
             return pd.Series(dtype=float)
         
 
-def run_etc(dir, df, force=False):
+def run_etc(path, df, force=False):
     # Filter on the etc sims
     etc_indices = df[df["sim_type"] == "etc"].index
 
@@ -53,7 +53,7 @@ def run_etc(dir, df, force=False):
             for col, val in metrics.items():
                 df.at[idx, col] = val
 
-def run_mc(dir, df, force=False):
+def run_mc(path, df, force=False):
     # Filter on Monte Carlo sims
     mc_indices = df[df["sim_type"] == "mc"].index
 
