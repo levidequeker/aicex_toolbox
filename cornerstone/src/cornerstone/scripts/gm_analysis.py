@@ -1,4 +1,5 @@
 import re
+import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,7 +11,18 @@ from cornerstone.core.parser import parse_filename
 def calculate_gm(df_sim):
     """Calculates gm from the simulation dataframe."""
     results = {}
-    vin = df_sim["v(vin)"].values
+    time_tran = df_sim["time"].values
+
+    # Remove transient of simulation in beginning: gives false results
+    tran_idx = np.argmin(np.abs(time_tran - 400e-9))
+    time = time_tran[tran_idx:]
+    vin = df_sim["v(vin)"].values[tran_idx:]
+
+    # Calculate Vin gradient and remove too small time steps (avoid division by small number later on)
+    dvin = np.gradient(vin)
+    epsilon = 5e-6
+    valid = np.abs(dvin) > epsilon
+    dvin_valid = dvin[valid]
     
     # Search for cols that resemble i(v.xdut.v1), i(v.xdut.v2), etc.
     probe_pattern = r"i\(v\.xdut\.(?P<dev>v\d+)\)"
@@ -19,9 +31,11 @@ def calculate_gm(df_sim):
         match = re.search(probe_pattern, col)
         if match:
             dev_name = match.group("dev") # f.e. 'v1'
-            iout = df_sim[col].values
-            gm_curve = np.abs(np.gradient(iout, vin))
-            results[f"gm_{dev_name}"] = np.mean(gm_curve)
+            
+            iout = df_sim[col].values[tran_idx:]
+            diout = np.gradient(iout)
+            gm_curve = diout[valid] / dvin_valid
+            results[f"gm_{dev_name}"] = np.abs(np.mean(gm_curve))
             
     return results # f.e. {'gm_v1': 1.2e-4, 'gm_v2': 1.1e-4}
 
@@ -77,9 +91,9 @@ def generate_etc_plots(df_etc, gm_cols, result_path, plot=False):
         print(f"Provide the title for the plot of column {col}:")
         col_title = input()
         plt.figure(figsize=(10, 6))
-        for c in ["Kss","Kff","Ksf","Kfs"]:
-            subset = df_etc[df_etc["corner"] == c]
-            plt.scatter(subset["vdd"], subset[col], label=c)
+        for c, t in itertools.product(["Kss","Kff","Ksf","Kfs"],["Th", "Tl"]):
+            subset = df_etc[df_etc["corner"] == c and df_etc["temp"] == t]
+            plt.plot(subset["vdd"], subset[col], label=f"{c}, {t}")
         plt.title(f"Extreme corner analysis: {col_title}")
         plt.xlabel("VDD [mV]")
         plt.ylabel("gm [S]")
