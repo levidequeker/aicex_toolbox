@@ -49,7 +49,7 @@ def run_etc(path, df, force=False):
     for idx in etc_indices:
         filename = df.at[idx, "filename"]
         if pd.isna(df.loc[idx].get("gm_v1")) or force:
-            metrics = process_gm_row(filename)
+            metrics = process_gm_row(filename, force)
             for col, val in metrics.items():
                 df.at[idx, col] = val
 
@@ -65,7 +65,7 @@ def run_mc(path, df, force=False):
     for idx in mc_indices:
         filename = df.at[idx, "filename"]
         if pd.isna(df.loc[idx].get("gm_v1")) or force:
-            metrics = process_gm_row(filename)
+            metrics = process_gm_row(filename, force)
             for col, val in metrics.items():
                 df.at[idx, col] = val
 
