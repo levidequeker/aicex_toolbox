@@ -1,8 +1,11 @@
 # Reproduced from Carsten Wulff's CICSIM project: https://github.com/wulffern/cicsim
 
+import os
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
+RESULT_DIR = "cornerstone_plots"
 BSIZE_SP = 512
 MDATA_LIST = [b'title', b'date', b'plotname', b'flags', b'no. variables',
               b'no. points', b'dimensions', b'command', b'option']
@@ -83,3 +86,30 @@ def toDataFrames(ngarr):
         df = pd.DataFrame(data=arrs[0],columns=plots[0]['varnames'])
         dfs.append(df)
     return dfs
+
+
+def makeResultDirectory(path: str, sim: str, subsim=None):
+    """Checks if the required result directory structure is present. If not, the required folders are made."""
+    result_root = os.path.join(Path(path), RESULT_DIR)
+    # Check if root result directory exists
+    if not os.path.isdir(result_root):
+        os.mkdir(result_root)
+
+    # Check if simulation directory exists within results directory
+    sim_dir = os.path.join(result_root, sim)
+    destination = sim_dir
+    if not os.path.isdir(sim_dir):
+        os.mkdir(sim_dir)
+        destination = sim_dir
+    
+    # Optional: user can make subdirectory within sim directory. Useful when sorting on different parameters
+    # Check if subsimulation directory exists within simulation directory
+    if subsim is not None:
+        subsim_dir = os.path.join(sim_dir, subsim)
+        destination = subsim_dir
+        if not os.path.isdir(sim_dir):
+            os.mkdir(sim_dir)
+    
+    return destination
+            
+

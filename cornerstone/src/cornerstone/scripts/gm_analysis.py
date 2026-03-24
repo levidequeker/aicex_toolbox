@@ -2,8 +2,9 @@ import re
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from pathlib import Path
-from cornerstone.core.io import ngRawRead, toDataFrames
+from cornerstone.core.io import ngRawRead, toDataFrames, makeResultDirectory
 from cornerstone.core.parser import parse_filename
 
 def calculate_gm(df_sim):
@@ -35,9 +36,42 @@ def process_gm_row(filename, force):
         except Exception as e:
             print(f"Error processing {filename}: {e}")
             return pd.Series(dtype=float)
-        
 
-def run_etc(path, df, force=False):
+def generate_mc_plots(df_mc, stats, gm_cols, result_path, plot=False):
+    """Genereert de 'wolk' plot en histogrammen."""
+    for col in gm_cols:
+        plt.figure(figsize=(10, 6))
+        
+        # Plot A: De 'Wolk' (Mean + Shading)
+        # Multi-index kolommen van stats aanspreken: stats[(col, 'mean')]
+        x = stats["vdd"]
+        mu = stats[(col, "mean")]
+        sigma = stats[(col, "std")]
+
+        plt.plot(x, mu, label=f"Mean {col}", color='blue', lw=2)
+        plt.fill_between(x, mu - 3*sigma, mu + 3*sigma, color='blue', alpha=0.2, label='3-sigma range')
+        plt.scatter(df_mc["vdd"], df_mc[col], color='black', s=5, alpha=0.3, label='Raw MC data')
+
+        plt.title(f"Monte Carlo Analysis: {col}")
+        plt.xlabel("VDD [mV]")
+        plt.ylabel("gm [S]")
+        plt.grid(True, which='both', linestyle='--', alpha=0.5)
+        plt.legend()
+        
+        plot_name = result_path / f"mc_shading_{col}.png"
+        plt.savefig(plot_name)
+        if plot:
+            plt.show()
+
+        # Plot B: Distributie per VDD (Histogram)
+        plt.figure(figsize=(10, 6))
+        sns.histplot(data=df_mc, x=col, hue="vdd", kde=True, palette="viridis")
+        plt.title(f"Distribution of {col} across VDD steps")
+        plt.savefig(result_path / f"mc_distro_{col}.png")
+        plt.show()
+
+
+def run_etc(path, df, force=False, plot=False):
     # Filter on the etc sims
     etc_indices = df[df["sim_type"] == "etc"].index
 
@@ -53,13 +87,13 @@ def run_etc(path, df, force=False):
             for col, val in metrics.items():
                 df.at[idx, col] = val
 
-def run_mc(path, df, force=False):
+def run_mc(path, df, force=False, plot=False):
     # Filter on Monte Carlo sims
     mc_indices = df[df["sim_type"] == "mc"].index
 
     if df[df["sim_type"] == "mc"].empty:
         print("No Monte Carlo simulation was found.")
-        return pd.DataFrame
+        return df, []
 
     print("Processing gm for Monte Carlo runs...")
     for idx in mc_indices:
@@ -73,4 +107,11 @@ def run_mc(path, df, force=False):
     gm_cols = [c for c in df_mc.columns if c.startswith("gm_")]
     # Group by VDD to get statistics
     stats = df_mc.groupby("vdd")[gm_cols].agg(["mean", "std"]).reset_index()
+
+    print(stats)
+    # Ensure simulation dir exists
+    result_path = makeResultDirectory(path=path, sim="mc")
+    stats.to_csv(result_path / "mc_gm_stats.csv", index=False)
+    generate_mc_plots(df_mc, stats, gm_cols, result_path, plot)
+
     return stats, gm_cols

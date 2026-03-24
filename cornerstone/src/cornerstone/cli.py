@@ -18,10 +18,15 @@ def main():
     # gm etc
     etc_parser = gm_sub.add_parser("etc", help="Extreme corner analysis")
     etc_parser.add_argument("--path", default=".", help="Directory with .raw files")
+    etc_parser.add_argument("--force", default="False", help="Recalculate all the gm values, disregarding the old ones")
+    etc_parser.add_argument("--show", default="False", help="Plot the resulting graphs and show them on screen")
     
     # gm mc
     mc_parser = gm_sub.add_parser("mc", help="Monte Carlo statistical analysis")
     mc_parser.add_argument("--path", default=".", help="Directory with .raw files")
+    mc_parser.add_argument("--force", default="False", help="Recalculate all the gm values, disregarding the old ones")
+    mc_parser.add_argument("--show", default="False", help="Plot the resulting graphs and show them on screen")
+
 
     # 3. GAIN Command (Repeat the logic)
     gain_parser = subparsers.add_parser("gain", help="Gain/VTC analysis")
@@ -36,10 +41,10 @@ def main():
     # Routing logic
     if args.command == "gm":
         if args.mode == "etc":
-            gm_analysis.run_etc(args.path, df)
+            gm_analysis.run_etc(args.path, df, args.force, args.show)
             df.to_csv(Path(args.path) / DB_FILE, index=False)
         elif args.mode == "mc":
-            gm_analysis.run_mc(args.path, df)
+            gm_analysis.run_mc(args.path, df, args.force, args.show)
             df.to_csv(Path(args.path) / DB_FILE, index=False)
         else:
             gm_parser.print_help()
