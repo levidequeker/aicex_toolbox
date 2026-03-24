@@ -92,7 +92,7 @@ def generate_etc_plots(df_etc, gm_cols, result_path, plot=False):
         col_title = input()
         plt.figure(figsize=(10, 6))
         for c, t in itertools.product(["Kss","Kff","Ksf","Kfs"],["Th", "Tl"]):
-            subset = df_etc[df_etc["corner"] == c and df_etc["temp"] == t]
+            subset = df_etc[df_etc["corner"] == c & df_etc["temp"] == t]
             plt.plot(subset["vdd"], subset[col], label=f"{c}, {t}")
         plt.title(f"Extreme corner analysis: {col_title}")
         plt.xlabel("VDD [mV]")
