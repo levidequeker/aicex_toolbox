@@ -37,7 +37,7 @@ def main():
 
     # Create or update dataframe
     df = make_dataframe(args.path, DB_FILE)
-
+    
     # Routing logic
     if args.command == "gm":
         if args.mode == "etc":

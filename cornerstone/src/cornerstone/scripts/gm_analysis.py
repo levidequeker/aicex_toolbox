@@ -38,9 +38,8 @@ def process_gm_row(filename, force):
             return pd.Series(dtype=float)
 
 def generate_mc_plots(df_mc, stats, gm_cols, result_path, plot=False):
-    """Genereert de 'wolk' plot en histogrammen."""
     for col in gm_cols:
-        print(f"Provide the title for the following plot:")
+        print(f"Provide the title for the plot of column {col}:")
         col_title = input()
         plt.figure(figsize=(10, 6))
         
@@ -70,7 +69,27 @@ def generate_mc_plots(df_mc, stats, gm_cols, result_path, plot=False):
         sns.histplot(data=df_mc, x=col, hue="vdd", kde=True, palette="viridis")
         plt.title(f"Distribution of {col_title} across VDD steps")
         plt.savefig(result_path / f"mc_distro_{col}.png")
-        plt.show()
+        if plot:
+            plt.show()
+
+def generate_etc_plots(df_etc, gm_cols, result_path, plot=False):
+    for col in gm_cols:
+        print(f"Provide the title for the plot of column {col}:")
+        col_title = input()
+        plt.figure(figsize=(10, 6))
+        for c in ["Kss","Kff","Ksf","Kfs"]:
+            subset = df_etc[df_etc["corner"] == c]
+            plt.scatter(subset["vdd"], subset[col], label=c)
+        plt.title(f"Extreme corner analysis: {col_title}")
+        plt.xlabel("VDD [mV]")
+        plt.ylabel("gm [S]")
+        plt.grid(True, which='both', linestyle='--', alpha=0.5)
+        plt.legend()
+        
+        plot_name = result_path / f"etc_corners_{col}.png"
+        plt.savefig(plot_name)
+        if plot:
+            plt.show()
 
 
 def run_etc(path, df, force=False, plot=False):
@@ -88,6 +107,11 @@ def run_etc(path, df, force=False, plot=False):
             metrics = process_gm_row(filename, force)
             for col, val in metrics.items():
                 df.at[idx, col] = val
+    df_etc = df[df["sim_type"] == "etc"].copy()
+    gm_cols = [c for c in df_etc.columns if c.startswith("gm_")]
+    result_path = makeResultDirectory(path=path, sim="etc")
+    generate_etc_plots(df_etc, gm_cols, result_path, plot)
+    
 
 def run_mc(path, df, force=False, plot=False):
     # Filter on Monte Carlo sims
